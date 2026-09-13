@@ -1,0 +1,3 @@
+# Copy to config.toml and edit.
+library_path = "~/Music/music-algo"
+db_path = "data/music.db"
