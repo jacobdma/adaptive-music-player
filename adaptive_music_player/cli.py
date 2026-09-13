@@ -18,16 +18,32 @@ def cmd_scan(cfg: config.Config) -> None:
         raise SystemExit("library scan incomplete; missing-file detection was skipped")
 
 
+def cmd_play(cfg: config.Config) -> None:
+    from adaptive_music_player.player.app import PlaybackStopped, Player
+
+    with closing(db.connect(cfg.db_path)) as conn:
+        player = Player(conn)
+        try:
+            player.run()
+        except PlaybackStopped as exc:
+            raise SystemExit(str(exc))
+        except KeyboardInterrupt:
+            pass
+        finally:
+            player.close()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="adaptive-music-player")
     parser.add_argument("--config", type=Path, default=Path("config.toml"))
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("scan", help="index the library folder")
+    sub.add_parser("play", help="start the terminal player")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     cfg = config.load(args.config)
-    {"scan": cmd_scan}[args.command](cfg)
+    {"scan": cmd_scan, "play": cmd_play}[args.command](cfg)
 
 
 if __name__ == "__main__":
