@@ -3,8 +3,8 @@ import logging
 from contextlib import closing
 from pathlib import Path
 
-from music_algo import config, db
-from music_algo.library.scan import scan_library
+from adaptive_music_player import config, db
+from adaptive_music_player.library.scan import scan_library
 
 
 def cmd_scan(cfg: config.Config) -> None:
@@ -19,7 +19,7 @@ def cmd_scan(cfg: config.Config) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="music-algo")
+    parser = argparse.ArgumentParser(prog="adaptive-music-player")
     parser.add_argument("--config", type=Path, default=Path("config.toml"))
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("scan", help="index the library folder")

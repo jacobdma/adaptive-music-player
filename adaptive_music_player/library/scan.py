@@ -6,7 +6,7 @@ from pathlib import Path
 
 import mutagen
 
-from music_algo.library.artwork import read_artwork
+from adaptive_music_player.library.artwork import read_artwork
 
 log = logging.getLogger(__name__)
 
