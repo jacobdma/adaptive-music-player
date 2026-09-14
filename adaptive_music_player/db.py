@@ -68,6 +68,18 @@ CREATE TABLE IF NOT EXISTS plays (
     navigation_from_play_id TEXT,
     replay_of_play_id       TEXT
 );
+
+CREATE TABLE IF NOT EXISTS song_features (
+    song_id         INTEGER NOT NULL REFERENCES songs(id),
+    source          TEXT NOT NULL,
+    version         TEXT NOT NULL,
+    status          TEXT NOT NULL,
+    data            BLOB,
+    error           TEXT,
+    computed_at     TEXT NOT NULL,
+    input_signature TEXT,
+    PRIMARY KEY (song_id, source)
+);
 """
 
 
@@ -84,4 +96,10 @@ def connect(path: Path) -> sqlite3.Connection:
         for name, sql_type in (("cover_art", "BLOB"), ("cover_mime", "TEXT")):
             if name not in columns:
                 conn.execute(f"ALTER TABLE songs ADD COLUMN {name} {sql_type}")
+        feature_columns = {
+            row["name"] for row in conn.execute("PRAGMA table_info(song_features)")
+        }
+
+        if "input_signature" not in feature_columns:
+            conn.execute("ALTER TABLE song_features ADD COLUMN input_signature TEXT")
     return conn

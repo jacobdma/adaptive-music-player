@@ -5,8 +5,8 @@
 Requires macOS with Homebrew.
 
 ```sh
-brew install python@3.12 mpv
-python3.12 -m venv .venv
+brew install python@3.13 mpv ffmpeg
+python3.13 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 cp config.example.toml config.toml
@@ -18,13 +18,15 @@ cp config.example.toml config.toml
 
    To use your Apple Music library, point it at `~/Music/Music/Media/Music`. macOS protects that folder, so give your terminal app Full Disk Access first (System Settings → Privacy & Security → Full Disk Access). Apple Music subscription downloads are DRM-protected and won't appear there; purchased and imported songs will.
 
-2. Index the library:
+2. Index the library and analyze how each song sounds:
 
    ```sh
    adaptive-music-player scan
    ```
 
-   Run `scan` again whenever you add, change, or remove music. Removed files stop being played.
+   Run `scan` again whenever you add, change, or remove music; removed files stop being played, and new or changed files are analyzed. The first run downloads a sound model and analyzes everything, which takes about 25 minutes for 2,600 songs. Stop it any time with Ctrl-C; the next run picks up where it left off.
+
+   Saved analysis from versions without file-change tracking is refreshed once on the next scan. Libraries already analyzed with file-change tracking keep their cached results.
 
 ## Playing
 
