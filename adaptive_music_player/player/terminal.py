@@ -9,7 +9,7 @@ from contextlib import contextmanager
 
 KEYS = {
     " ": "pause", "n": "next", "p": "previous", "l": "like", "q": "quit",
-    "\x1b[C": "forward", "\x1b[D": "back",
+    "\x1b[C": "forward", "\x1b[D": "back", "\x1bOC": "forward", "\x1bOD": "back",
 }
 HELP = "space pause · n next · p previous · l like · ←/→ seek 10s · q quit"
 
@@ -37,9 +37,9 @@ def read_keys(timeout_s: float) -> list[str]:
     data = os.read(sys.stdin.fileno(), 64).decode(errors="ignore")
     actions = []
     while data:
-        size = 3 if data.startswith("\x1b[") else 1
+        size = 3 if data.startswith(("\x1b[", "\x1bO")) else 1
         key, data = data[:size], data[size:]
-        if (action := KEYS.get(key.lower())) is not None:
+        if (action := KEYS.get(key) or KEYS.get(key.lower())) is not None:
             actions.append(action)
     return actions
 

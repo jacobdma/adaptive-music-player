@@ -7,7 +7,7 @@ import mpv
 
 from adaptive_music_player.events.log import Event, liked_state, record_event
 from adaptive_music_player.model.picker import pick_random
-from adaptive_music_player.player import terminal
+from adaptive_music_player.player import macos, terminal
 
 TICK_S = 0.1
 SEEK_STEP_MS = 10_000
@@ -34,6 +34,7 @@ class Play:
 class Player:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self.conn = conn
+        macos.hide_dock_icon()
         self.mpv = mpv.MPV(vid="no", keep_open="yes", input_default_bindings=False,
                            input_vo_keyboard=False, ytdl=False)
         self.file_loaded = False
