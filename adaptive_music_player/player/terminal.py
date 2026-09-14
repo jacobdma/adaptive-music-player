@@ -7,6 +7,8 @@ import tty
 from collections.abc import Iterator
 from contextlib import contextmanager
 
+from adaptive_music_player.console import fit_width
+
 KEYS = {
     " ": "pause", "n": "next", "p": "previous", "l": "like", "q": "quit",
     "\x1b[C": "forward", "\x1b[D": "back", "\x1bOC": "forward", "\x1bOD": "back",
@@ -46,7 +48,7 @@ def read_keys(timeout_s: float) -> list[str]:
 
 def show_status(text: str) -> None:
     width = shutil.get_terminal_size().columns
-    sys.stdout.write("\r\033[K" + text[: width - 1])
+    sys.stdout.write("\r\033[K" + fit_width(text, width - 1))
     sys.stdout.flush()
 
 

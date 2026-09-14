@@ -2,6 +2,7 @@ import logging
 import shutil
 import sys
 import time
+import unicodedata
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import TextIO
@@ -22,7 +23,7 @@ class ProgressLine:
         if not self.enabled or now - self.last_draw < REDRAW_INTERVAL_S:
             return
         self.last_draw = now
-        self.text = text[: shutil.get_terminal_size().columns - 1]
+        self.text = fit_width(text, shutil.get_terminal_size().columns - 1)
         self._draw()
 
     def print_above(self, message: str) -> None:
@@ -70,6 +71,18 @@ def progress_line(shorten_prefix: str = "") -> Iterator[ProgressLine]:
     finally:
         line.clear()
         root.handlers = saved
+
+
+def fit_width(text: str, columns: int) -> str:
+    """Trim text to fit a number of terminal columns; wide characters like 空 take two."""
+    used = 0
+    for index, char in enumerate(text):
+        if unicodedata.combining(char):
+            continue
+        used += 2 if unicodedata.east_asian_width(char) in ("W", "F") else 1
+        if used > columns:
+            return text[:index]
+    return text
 
 
 def bar(done: int, total: int, width: int = 24) -> str:
