@@ -46,6 +46,28 @@ CREATE TABLE IF NOT EXISTS events (
 -- A pick can start at most one play.
 CREATE UNIQUE INDEX IF NOT EXISTS events_pick_id ON events(pick_id) WHERE pick_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS events_song_type ON events(song_id, type);
+
+CREATE TABLE IF NOT EXISTS plays (
+    play_id                 TEXT PRIMARY KEY,
+    session_id              TEXT NOT NULL,
+    song_id                 INTEGER NOT NULL REFERENCES songs(id),
+    started_at              TEXT NOT NULL,
+    ended_at                TEXT NOT NULL,
+    reason                  TEXT NOT NULL,
+    duration_ms             INTEGER NOT NULL,
+    listened_ms             INTEGER NOT NULL,
+    terminal_event          TEXT,
+    reached_end             INTEGER NOT NULL,
+    completed               INTEGER NOT NULL,
+    early_skip              INTEGER NOT NULL,
+    late_skip               INTEGER NOT NULL,
+    replayed                INTEGER NOT NULL,
+    liked                   INTEGER NOT NULL,
+    censored                INTEGER NOT NULL,
+    pick_id                 TEXT REFERENCES picks(id),
+    navigation_from_play_id TEXT,
+    replay_of_play_id       TEXT
+);
 """
 
 

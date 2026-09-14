@@ -40,3 +40,9 @@ adaptive-music-player play
 | l | like / unlike |
 | ← / → | seek 10 seconds |
 | q | quit |
+
+To see how your listening is going, run:
+
+```sh
+adaptive-music-player plays
+```
