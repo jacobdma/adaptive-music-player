@@ -1,6 +1,7 @@
 import logging
 import sqlite3
 import stat
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -11,6 +12,8 @@ from adaptive_music_player.library.artwork import read_artwork
 log = logging.getLogger(__name__)
 
 AUDIO_EXTENSIONS = {".mp3", ".m4a", ".flac", ".ogg", ".opus"}
+
+ProgressCallback = Callable[[int, int | None, Path], None]
 
 
 @dataclass
@@ -57,8 +60,10 @@ def parse_track_number(value: str | None) -> int | None:
         return None
 
 
-def scan_library(conn: sqlite3.Connection, root: Path) -> ScanResult:
+def scan_library(conn: sqlite3.Connection, root: Path,
+                 on_progress: ProgressCallback | None = None) -> ScanResult:
     root = root.expanduser().resolve()
+    report = on_progress or (lambda done, total, path: None)
     result = ScanResult()
     known = {row["path"] for row in conn.execute("SELECT path FROM songs")}
     seen: set[str] = set()
@@ -69,54 +74,61 @@ def scan_library(conn: sqlite3.Connection, root: Path) -> ScanResult:
         result.errors.append((path, str(exc)))
         result.traversal_complete = False
 
+    candidates: list[Path] = []
+    for directory, directories, filenames in root.walk(on_error=traversal_error):
+        directories.sort()
+        for name in sorted(filenames):
+            path = directory / name
+            if path.suffix.lower() not in AUDIO_EXTENSIONS:
+                continue
+            try:
+                if not stat.S_ISREG(path.stat().st_mode):
+                    continue
+            except FileNotFoundError:
+                continue
+            except OSError as exc:
+                seen.add(str(path))
+                log.warning("skipping %s: %s", path, exc)
+                result.errors.append((path, str(exc)))
+                continue
+            candidates.append(path)
+            report(len(candidates), None, path)
+
     with conn:
-        for directory, directories, filenames in root.walk(on_error=traversal_error):
-            directories.sort()
-            for name in sorted(filenames):
-                path = directory / name
-                if path.suffix.lower() not in AUDIO_EXTENSIONS:
-                    continue
-                key = str(path)
-                try:
-                    if not stat.S_ISREG(path.stat().st_mode):
-                        continue
-                except FileNotFoundError:
-                    continue
-                except OSError as exc:
-                    seen.add(key)
-                    log.warning("skipping %s: %s", path, exc)
-                    result.errors.append((path, str(exc)))
-                    continue
-
-                # Presence is independent of whether metadata can be read.
+        for done, path in enumerate(candidates, 1):
+            report(done, len(candidates), path)
+            key = str(path)
+            try:
+                tags = read_tags(path)
+            except FileNotFoundError:
+                continue
+            except Exception as exc:
                 seen.add(key)
-                try:
-                    tags = read_tags(path)
-                except Exception as exc:
-                    log.warning("skipping %s: %s", path, exc)
-                    result.errors.append((path, str(exc)))
-                    continue
+                log.warning("skipping %s: %s", path, exc)
+                result.errors.append((path, str(exc)))
+                continue
 
-                result.found += 1
-                result.added += key not in known
-                conn.execute(
-                    """
-                    INSERT INTO songs (
-                        path, title, artist, album, track_number, duration_ms,
-                        cover_art, cover_mime, available
-                    )
-                    VALUES (
-                        :path, :title, :artist, :album, :track_number, :duration_ms,
-                        :cover_art, :cover_mime, 1
-                    )
-                    ON CONFLICT(path) DO UPDATE SET
-                        title = excluded.title, artist = excluded.artist, album = excluded.album,
-                        track_number = excluded.track_number, duration_ms = excluded.duration_ms,
-                        cover_art = excluded.cover_art, cover_mime = excluded.cover_mime,
-                        available = 1
-                    """,
-                    {"path": key, **tags},
+            seen.add(key)
+            result.found += 1
+            result.added += key not in known
+            conn.execute(
+                """
+                INSERT INTO songs (
+                    path, title, artist, album, track_number, duration_ms,
+                    cover_art, cover_mime, available
                 )
+                VALUES (
+                    :path, :title, :artist, :album, :track_number, :duration_ms,
+                    :cover_art, :cover_mime, 1
+                )
+                ON CONFLICT(path) DO UPDATE SET
+                    title = excluded.title, artist = excluded.artist, album = excluded.album,
+                    track_number = excluded.track_number, duration_ms = excluded.duration_ms,
+                    cover_art = excluded.cover_art, cover_mime = excluded.cover_mime,
+                    available = 1
+                """,
+                {"path": key, **tags},
+            )
 
         # An incomplete walk cannot establish that an unseen file is missing.
         if result.traversal_complete:

@@ -1,9 +1,10 @@
 import argparse
 import logging
+import time
 from contextlib import closing
 from pathlib import Path
 
-from adaptive_music_player import config, db
+from adaptive_music_player import config, console, db
 from adaptive_music_player.events.plays import rebuild_plays
 from adaptive_music_player.library.scan import scan_library
 
@@ -11,10 +12,21 @@ from adaptive_music_player.library.scan import scan_library
 def cmd_scan(cfg: config.Config) -> None:
     if not cfg.library_path.is_dir():
         raise SystemExit(f"library folder not found: {cfg.library_path}")
-    with closing(db.connect(cfg.db_path)) as conn:
-        result = scan_library(conn, cfg.library_path)
-    print(f"{result.found} songs found, {result.added} new, "
-          f"{result.missing} missing, {len(result.errors)} unreadable")
+    root = cfg.library_path.resolve()
+    started = time.monotonic()
+
+    with closing(db.connect(cfg.db_path)) as conn, console.progress_line(shorten_prefix=f"{root}/") as line:
+        def on_progress(done: int, total: int | None, path: Path) -> None:
+            if total is None:
+                line.show(f"Finding music… {done:,} found")
+            else:
+                album = " / ".join(path.parent.relative_to(root).parts) or path.name
+                line.show(f"Scanning {console.bar(done, total)}  {album}")
+
+        result = scan_library(conn, cfg.library_path, on_progress)
+
+    print(f"Scanned {result.found:,} songs in {time.monotonic() - started:.1f}s")
+    print(f"  {result.added:,} new · {result.missing:,} missing · {len(result.errors):,} unreadable")
     if not result.traversal_complete:
         raise SystemExit("library scan incomplete; missing-file detection was skipped")
 
