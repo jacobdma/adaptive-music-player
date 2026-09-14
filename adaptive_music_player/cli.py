@@ -82,6 +82,32 @@ def _duration(seconds: float) -> str:
     return f"{seconds:.1f}s" if seconds < 60 else f"{int(seconds // 60)}m {int(seconds % 60):02d}s"
 
 
+def cmd_similar(cfg: config.Config, query: str) -> None:
+    import numpy as np
+
+    from adaptive_music_player.model.vectors import load_vectors
+
+    with closing(db.connect(cfg.db_path)) as conn:
+        vectors = load_vectors(conn)
+        songs = {row["id"]: row for row in conn.execute("SELECT id, title, artist FROM songs")}
+    if vectors is None:
+        raise SystemExit("No analyzed songs yet; run scan first.")
+
+    labels = [f"{songs[song_id]['artist']} — {songs[song_id]['title']}" for song_id in vectors.song_ids]
+    matches = [index for index, label in enumerate(labels) if query.lower() in label.lower()]
+    if not matches:
+        raise SystemExit(f"No analyzed song matches {query!r}.")
+    target = matches[0]
+    if len(matches) > 1:
+        others = "; ".join(labels[index] for index in matches[1:4])
+        print(f"{len(matches)} songs match; showing the first. Others: {others}")
+
+    similarity = vectors.combined @ vectors.combined[target]
+    print(f"{labels[target]}  ({vectors.tempo[target]:.0f} bpm)")
+    for index in [index for index in np.argsort(-similarity) if index != target][:10]:
+        print(f"  {similarity[index]:+.2f}  {labels[index]}  ({vectors.tempo[index]:.0f} bpm)")
+
+
 def cmd_play(cfg: config.Config) -> None:
     from adaptive_music_player.player.app import PlaybackStopped, Player
 
@@ -115,12 +141,17 @@ def main() -> None:
     sub.add_parser("scan", help="index the library and update audio analysis")
     sub.add_parser("play", help="start the terminal player")
     sub.add_parser("plays", help="rebuild plays from listening events and summarize them")
+    similar = sub.add_parser("similar", help="list the songs that sound most like a song")
+    similar.add_argument("query", help="part of the song's artist or title")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
     logging.captureWarnings(True)
     cfg = config.load(args.config)
-    {"scan": cmd_scan, "play": cmd_play, "plays": cmd_plays}[args.command](cfg)
+    if args.command == "similar":
+        cmd_similar(cfg, args.query)
+    else:
+        {"scan": cmd_scan, "play": cmd_play, "plays": cmd_plays}[args.command](cfg)
 
 
 if __name__ == "__main__":
