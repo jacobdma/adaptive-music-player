@@ -46,7 +46,8 @@ def _index(conn: sqlite3.Connection, library_path: Path, root: Path) -> ScanResu
 
         result = scan_library(conn, library_path, on_progress)
     print(f"Scanned {result.found:,} songs in {_duration(time.monotonic() - started)}")
-    print(f"  {result.added:,} new · {result.missing:,} missing · {len(result.errors):,} unreadable")
+    copies = f" · {result.mp3_copies:,} MP3 copies skipped" if result.mp3_copies else ""
+    print(f"  {result.added:,} new · {result.missing:,} missing · {len(result.errors):,} unreadable{copies}")
     return result
 
 

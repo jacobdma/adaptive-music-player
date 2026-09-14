@@ -21,6 +21,7 @@ class ScanResult:
     found: int = 0
     added: int = 0
     missing: int = 0
+    mp3_copies: int = 0
     errors: list[tuple[Path, str]] = field(default_factory=list)
     traversal_complete: bool = True
 
@@ -75,11 +76,17 @@ def scan_library(conn: sqlite3.Connection, root: Path,
         result.traversal_complete = False
 
     candidates: list[Path] = []
+    copies: set[str] = set()
     for directory, directories, filenames in root.walk(on_error=traversal_error):
         directories.sort()
+        originals = {Path(name).stem for name in filenames
+                     if Path(name).suffix.lower() in AUDIO_EXTENSIONS - {".mp3"}}
         for name in sorted(filenames):
             path = directory / name
             if path.suffix.lower() not in AUDIO_EXTENSIONS:
+                continue
+            if path.suffix.lower() == ".mp3" and path.stem in originals:
+                copies.add(str(path))
                 continue
             try:
                 if not stat.S_ISREG(path.stat().st_mode):
@@ -130,9 +137,13 @@ def scan_library(conn: sqlite3.Connection, root: Path,
                 {"path": key, **tags},
             )
 
+        result.mp3_copies = len(copies)
+        for path in copies & known:
+            conn.execute("UPDATE songs SET available = 0 WHERE path = ?", (path,))
+
         # An incomplete walk cannot establish that an unseen file is missing.
         if result.traversal_complete:
-            for path in known - seen:
+            for path in known - seen - copies:
                 cursor = conn.execute(
                     "UPDATE songs SET available = 0 WHERE path = ? AND available = 1", (path,))
                 result.missing += cursor.rowcount
