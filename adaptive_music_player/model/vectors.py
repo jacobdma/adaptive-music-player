@@ -49,11 +49,14 @@ def load_vectors(conn: sqlite3.Connection) -> SongVectors | None:
     norms = np.linalg.norm(combined, axis=1, keepdims=True)
     norms[norms == 0] = 1.0
     _, _, components = np.linalg.svd(clap, full_matrices=False)
+    projected = clap @ components[:PCA_DIMENSIONS].T
+    sound_pca = np.zeros((len(rows), PCA_DIMENSIONS), dtype=projected.dtype)
+    sound_pca[:, :projected.shape[1]] = projected
 
     return SongVectors(
         song_ids=song_ids,
         combined=combined / norms,
-        sound_pca=clap @ components[:PCA_DIMENSIONS].T,
+        sound_pca=sound_pca,
         tempo=tempo_energy[:, 0],
         energy=tempo_energy[:, 1],
         rows={int(song_id): index for index, song_id in enumerate(song_ids)},

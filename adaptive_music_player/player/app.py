@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 import mpv
 
 from adaptive_music_player.events.log import Event, liked_state, record_event
-from adaptive_music_player.model.picker import pick_random
+from adaptive_music_player.model.picker import Recommender
 from adaptive_music_player.player import macos, terminal
 
 TICK_S = 0.1
@@ -34,6 +34,7 @@ class Play:
 class Player:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self.conn = conn
+        self.recommender = Recommender(conn)
         macos.hide_dock_icon()
         self.mpv = mpv.MPV(vid="no", keep_open="yes", input_default_bindings=False,
                            input_vo_keyboard=False, ytdl=False)
@@ -87,7 +88,7 @@ class Player:
         current = self.play
         if current is not None and keep_history:
             self.history.append(current)
-        pick = pick_random(self.conn, current.song["id"] if current else None)
+        pick = self.recommender.pick(current.song["id"] if current else None)
         if pick is None:
             raise PlaybackStopped("no playable songs; run `adaptive-music-player scan`")
         self._start(self._song(pick.song_id), "automatic", pick_id=pick.id)
