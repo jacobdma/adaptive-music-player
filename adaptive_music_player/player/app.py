@@ -90,7 +90,7 @@ class Player:
             self.history.append(current)
         pick = self.recommender.pick(current.song["id"] if current else None)
         if pick is None:
-            raise PlaybackStopped("no playable songs; run `adaptive-music-player scan`")
+            raise PlaybackStopped("no playable songs; run `amp scan`")
         self._start(self._song(pick.song_id), "automatic", pick_id=pick.id)
 
     def _start(self, song: sqlite3.Row, reason: str, **links: str) -> None:

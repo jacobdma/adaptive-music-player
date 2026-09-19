@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-adaptive-music-player = "adaptive_music_player.cli:main"
+amp = "adaptive_music_player.cli:main"
 
 [build-system]
 requires = ["setuptools>=69"]

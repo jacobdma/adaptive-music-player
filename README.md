@@ -10,7 +10,10 @@ python3.13 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 cp config.example.toml config.toml
+ln -sf "$PWD/.venv/bin/amp" ~/.local/bin/amp
 ```
+
+The symlink puts `amp` on your `PATH`, so it runs from any folder without activating the venv. It reads `config.toml` from the current folder if there is one, otherwise from this checkout; `--config` or `$AMP_CONFIG` override that. Relative paths inside the config (like `db_path`) are resolved against the config file's own folder.
 
 ## Adding music
 
@@ -21,7 +24,7 @@ cp config.example.toml config.toml
 2. Index the library and analyze how each song sounds:
 
    ```sh
-   adaptive-music-player scan
+   amp scan
    ```
 
    Run `scan` again whenever you add, change, or remove music; removed files stop being played, and new or changed files are analyzed. The first run downloads a sound model and analyzes everything, which takes about 25 minutes for 2,600 songs. Stop it any time with Ctrl-C; the next run picks up where it left off.
@@ -31,7 +34,7 @@ cp config.example.toml config.toml
 ## Playing
 
 ```sh
-adaptive-music-player play
+amp play
 ```
 
 | key | action |
@@ -46,5 +49,5 @@ adaptive-music-player play
 To see how your listening is going, run:
 
 ```sh
-adaptive-music-player plays
+amp plays
 ```

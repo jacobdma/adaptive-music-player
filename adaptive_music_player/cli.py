@@ -135,8 +135,8 @@ def cmd_plays(cfg: config.Config) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="adaptive-music-player")
-    parser.add_argument("--config", type=Path, default=Path("config.toml"))
+    parser = argparse.ArgumentParser(prog="amp")
+    parser.add_argument("--config", type=Path, default=None)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("scan", help="index the library and update audio analysis")
     sub.add_parser("play", help="start the terminal player")
